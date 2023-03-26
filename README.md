@@ -6,7 +6,7 @@
  ---------------------------------------------------------------------------------
 
 > **Note**
-> The old readme.md contains outdated information, so it has been moved off the main page. it can still be accessed [here](README.md.old).
+> The old readme.md contains outdated information, so it has been moved off the main page. it can still be accessed [here](README.old.md).
 
 The original [KlipperWRT](https://github.com/ihrapsa/KlipperWrt), while great, is not perfect. There is outdated information, unclear instructions, and a bunch of other things - such as no real support for any device other than the Creality Wi-Fi Box. KlipperWRT-EX intends to fix that.
 
