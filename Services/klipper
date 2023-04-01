@@ -5,11 +5,13 @@
 START=99
 STOP=10
 USE_PROCD=1
-
-PYTHON='/usr/bin/python3'
-KLIPPY_PY='/root/klipper/klippy/klippy.py'
-PRINTER_CFG='/root/printer_data/config/printer.cfg'
-KLIPPER_LOG='/root/printer_data/logs/klippy.log'
+# Load configuration from UCI
+config_load klipper
+# Load values from UCI into variables used below
+config_get PYTHON path python
+config_get KLIPPY_PY path klipper_py
+config_get KLIPPER_LOG path klipper_log
+config_get PRINTER_CFG path printer_cfg
 
 start_service() {
     procd_open_instance

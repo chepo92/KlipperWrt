@@ -6,9 +6,12 @@ START=91
 STOP=10
 USE_PROCD=1
 
-PYTHON='/usr/bin/python3'
-MOONRAKER_PY='/root/moonraker/moonraker/moonraker.py'
-PRINTER_DATA='/root/printer_data'
+# Load configuration from UCI
+config_load moonraker
+# Load values from UCI into variables used below
+config_get PYTHON path python
+config_get MOONRAKER_PY path moonraker_py
+config_get PRINTER_DATA path printer_data
 
 start_service() {
     procd_open_instance

@@ -6,8 +6,11 @@ START=91
 STOP=10
 USE_PROCD=1
 
-PYTHON='/usr/bin/python3'
-DWC_PY='/root/dwc2-for-klipper-socket/web_dwc2.py'
+# Load configuration from UCI
+config_load dwc
+# Load values from UCI into variables used below
+config_get PYTHON path python
+config_get DWC_PY path dwc_py
 
 start_service() {
     procd_open_instance
