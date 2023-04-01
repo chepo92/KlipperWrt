@@ -56,3 +56,32 @@ config_get var lan ipaddr
 # `echo` the variable `var`
 echo "$var"
 ```
+
+```bash
+###############
+##  Klipper  ##
+###############
+
+# Create a new subsystem in UCI named 'klipper'
+uci import klipper < /dev/null
+
+# Define the section, `klipper.path`
+uci set klipper.path='klipper'
+# Define values in the `klipper.path` section
+uci set klipper.path.python='/path/to/python3'
+uci set klipper.path.klipper_py='/path/to/klipper.py'
+uci set klipper.path.printer_cfg='/path/to/printer.cfg'
+uci set klipper.path.klipper_log='/path/to/klipper.log'
+# This results in `/etc/config/klipper` looking like this:
+#
+#    config klipper 'path'
+#   	option python '/path/to/python3'
+#   	option klipperpy '/path/to/klipper.py'
+#   	option printercfg '/path/to/printer.cfg'
+#   	option klipperlog '/path/to/klipper.log'
+#
+# These values are used by `/etc/init.d/klipper`
+
+# Commit changes
+uci commit klipper
+```
