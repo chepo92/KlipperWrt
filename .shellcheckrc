@@ -1,0 +1,3 @@
+# In posix sh, command-with-flag is undefined
+# Busybox is not fully posix compliant, disable with directive
+disable=SC3045
