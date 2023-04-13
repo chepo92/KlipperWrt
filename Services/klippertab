@@ -1,0 +1,65 @@
+#!/bin/sh /etc/rc.common
+
+START=12
+
+check_enabled(){
+	config_get_bool _BOOL "$1" enabled notboolean
+	if [ "$_BOOL" = "0" ]; then
+		# 0 means disabled
+		return 1
+	elif [ "$_BOOL" = "1" ]; then
+		# 1 means enabled
+		return 0
+	elif [ "$_BOOL" = "notboolean" ]; then
+		# config_get_bool outputs '2' if the value is not boolean
+		# shellcheck disable=SC2016
+		echo -e '[\033[31mERROR\033[0m] `enabled` value was not boolean. Skipping.' 1>&2
+		return 1
+	fi
+}
+get_device(){
+	# If an argument was passed; get device from block info
+	if [ -n "$1" ]; then
+	    DEVICE=$(block info | grep "$1" | grep -oE -e "/dev/.*?:")
+	    # Remove the trailing `:` from the string
+	    DEVICE=${DEVICE%:}
+	elif [ -z "$1" ]; then
+	    echo -e '[\033[31mERROR\033[0m] No arguments were passed' 1>&2
+	fi
+	unset UUID
+}
+bind_mount(){
+	if check_enabled "$1"; then
+		# Load the UUID from UCI into $_UUID
+		config_get _UUID "$1" uuid
+		# Get the device currently associated with the $_UUID
+		get_device "$_UUID"
+		config_get _TARGET "$1" target
+		config_get _OPTIONS "$1" options
+		config_get _PROGRAM "$1" program
+		config_get _SUBVOL subvolume "$_PROGRAM"
+		mount -t btrfs -o "$(echo "$_OPTIONS" | sed -En "s/SUBVOL_UCI_REPLACE/$_SUBVOL/p")" "$DEVICE" "$_TARGET"/"$_SUBVOL"
+	else
+		echo -e "[INFO] Section '$1' not enabled"
+	fi
+}
+
+boot() {
+	config_load klipper
+	config_foreach bind_mount mount
+}
+
+start() {
+	return 0
+}
+
+restart() {
+	return 0
+}
+
+stop() {
+	# This is the best I could think of at the moment - it unmounts all filesystems, filtering by the type btrfs
+	# This may produce some weird edge cases, please open an issue if that is the case. 
+	# In theory, however, this should allow for configuration changes, meaning that everything will unmount regardless of configuration.
+	umount -a -t btrfs
+}
