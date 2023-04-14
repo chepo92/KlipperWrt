@@ -118,7 +118,7 @@ unset -v _TMP _ANS _YN
 #======================================================#
 
 btrfs(){
-	DEVICE='sda1'
+	prompt_block_device
 	info "Installation target is '$DEVICE'"
 	MOUNTPOINT='/etc/klipper'
 	info "Root mountpoint is '$DEVICE'"
