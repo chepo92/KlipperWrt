@@ -10,7 +10,14 @@
 
 The original [KlipperWRT](https://github.com/ihrapsa/KlipperWrt), while great, is not perfect. There is outdated information, unclear instructions, and a bunch of other things - such as no real support for any device other than the Creality Wi-Fi Box. KlipperWRT-EX intends to fix that.
 
-Keep in mind that this is a personal project, and I won't have time to do everything - but I hope I can at least clear a bit of the confusion and help people along in the right direction.
+KlipperWRT-EX revolves around a few core principles:
+- UCI integration
+- Reproducibility
+- Simplicity
+- Safety
+More information on what this entails can be found [here](Docs/Principles.md)
+
+*Keep in mind that this is a personal project, and I won't have time to do everything - but I hope I can at least clear a bit of the confusion and help people along in the right direction.*
 
 --------------------------------------------------------------------------
 ### Credits:
