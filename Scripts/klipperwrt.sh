@@ -1,4 +1,20 @@
 #!/bin/sh
+
+
+# This script relies on a couple of packages. I tried to keep them down to a minimum, so as to reduce bloat.
+# They are:
+# curl (Used in some services)
+# btrfs-progs block-mount e2fsprogs parted (Filesystem support)
+# kmod-usb-storage (for USB drive support)
+# kmod-usb-storage-uas kmod-usb-ohci kmod-usb-uhci kmod-usb3 (For USB 3 - you can exclude these if your device doesn't have USB 3)
+# nginx-ssl (For Fluidd/Mainsail/DWC)
+# patch libsodium usbutils (Dependencies for klipper)
+# git-http unzip lsblk (used in the script)
+# kmod-usb-serial kmod-usb-serial-cp210x (for communicating with the printer. 
+# Make sure to select the appropriate kmod for your UART controller)
+
+
+
 # No, the following isn't a global shellcheck directive
 true
 # shellcheck disable=SC1091
@@ -6,16 +22,17 @@ true
 
 # Error, log, and info functions. Colours defined once here:
 RED='\033[0;31m'	# Red
+LG='\033[0;37m'		# Light Gray
 NC='\033[0m' 		# No Color
 echoerr(){
-	# Echo, but fancy!
-	# Log to stderr
-	echo -e "[${RED}ERROR${NC}]"" $*" 1>&2
+	# Just a regular echo, but renamed/colored for readability.
+	# Also logs to stderr and adds a prefix. Fancy!
+	echo -e "[${RED}ERROR${NC}] $*" 1>&2
 }
 info(){
-	# Just a regular echo, but renamed for readability
+	# Just a regular echo, but renamed/colored for readability
 	# Also adds a prefix. Fancy!
-	echo '[INFO]'" $*"
+	echo -e "[${LG}INFO${NC}]${LG} $*${NC}"
 }
 
 config_load klipper
@@ -68,10 +85,10 @@ prompt_block_device(){
 		echo -e "          ${RED}ALL DATA ON THIS DEVICE WILL BE DELETED!${NC}"
 		echo -e "          ${RED}========================================${NC}\n"
 		echo -e 'If you have valuable data on the device, back it up now. Press ctrl + c to exit the script.\n\n'
-		sleep 3
-		echo -e'If you are using USB storage such as a flash drive, it will most likely be /dev/sda\nIf you are using a (micro) SD card, it will most likely be /dev/mmcblk0\n'
+		sleep 5
+		echo -e 'If you are using USB storage such as a flash drive, it will most likely be /dev/sda\nIf you are using a (micro) SD card, it will most likely be /dev/mmcblk0\n'
 		echo -e 'Available devices are:\n\n====================================================='
-		lsblk -po name,vendor,model,size -e 31,7,254 | sed 's/NAME/NODE/g'
+		lsblk -dpo name,vendor,model,size -e 31,7,254 | sed 's/NAME/NODE/g'
 		echo -e '=====================================================\n'
 		read -rp 'Device Node: ' _DEVICE
 		if verify_block_device "$_DEVICE" > /dev/null 2>&1; then
@@ -117,13 +134,13 @@ select_frontend(){
 	echo '====================================='
 	_ANS='not_found'
 	while [ "$_ANS" = 'not_found' ]; do
-		read -rn 1 -p 'Select your frontend: ' _ANS
-		case "$_YN" in
-			0) _ANS='abort';;
-			1) _FRONTEND='fluidd';;
-			2) _FRONTEND='mainsail';;
-			3) _FRONTEND='dwc';;
-			*) _ANS='not_found';;
+		read -rp 'Select your frontend: ' _ANS
+		case "$_ANS" in
+			0) _ANS='abort' ;;
+			1) _FRONTEND='fluidd' ;;
+			2) _FRONTEND='mainsail' ;;
+			3) _FRONTEND='dwc' ;;
+			*) _ANS='not_found' ;;
 		esac
 		if [ "$_ANS" = 'abort' ]; then
 			exit 1
@@ -248,7 +265,7 @@ make_btrfs(){
 	chmod 775 /etc/init.d/klippertab
 
 	# Unmount the $_DEVICE in case it is in use
-	umount -q "${_DEVICE}1"
+	umount "${_DEVICE}1"
 	block umount
 	block mount
 	/etc/init.d/klippertab boot
@@ -272,7 +289,7 @@ make_btrfs(){
 }
 
 create_uci_defaults(){
-	# This script will add the default configuration to a uci section, which will be read by the service files.
+	# This function will add the default configuration to a uci section, which will be read by the service files.
 	# Service files are in `/etc/init.d/`
 
 	# Full path to the python executable. 
@@ -375,7 +392,7 @@ install_frontend(){
 
 
 select_frontend
-make_btrfs
 create_uci_defaults
+make_btrfs
 install_backends
 install_frontend
