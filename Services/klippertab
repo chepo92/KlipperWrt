@@ -11,7 +11,7 @@ check_enabled(){
 		# 1 means enabled
 		return 0
 	elif [ "$_BOOL" = "notboolean" ]; then
-		# config_get_bool outputs '2' if the value is not boolean
+		# config_get_bool outputs 'notboolean' if the value is not boolean
 		# shellcheck disable=SC2016
 		echo -e '[\033[31mERROR\033[0m] `enabled` value was not boolean. Skipping.' 1>&2
 		return 1
