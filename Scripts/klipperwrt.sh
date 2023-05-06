@@ -9,20 +9,56 @@
 # kmod-usb-storage-uas kmod-usb-ohci kmod-usb-uhci kmod-usb3 (For USB 3 - you can exclude these if your device doesn't have USB 3)
 # nginx-ssl (For Fluidd/Mainsail/DWC)
 # patch libsodium usbutils (Dependencies for klipper)
-# git-http unzip lsblk (used in the script)
+# git-http unzip lsblk wipefs (used in the script)
 # kmod-usb-serial kmod-usb-serial-cp210x (for communicating with the printer. 
 # Make sure to select the appropriate kmod for your UART controller)
 
 
+# ==============================================================================
+# The following stuff is just for testing, it should be moved around eventually
+# ==============================================================================
+# Full path to the python executable. 
+PYTHONPATH='/usr/bin/python'
+# Full path to the python executable for each service. By default, this will be the same as $PYTHONPATH
+# If you need to specify a different python installation for each program, do that here
+PYTHONPATH_KLIPPER="$PYTHONPATH"
+PYTHONPATH_MOONRAKER="$PYTHONPATH"
+# Name of subvolume
+PYTHONVOL='python3.10'
+GCCVOL='gcc'
+KLIPPERVOL='klipper'
+NGINXVOL='nginx'
+MOONRAKERVOL='moonraker'
+PRINTER_DATAVOL='printer_data'
 
-# No, the following isn't a global shellcheck directive
-true
+# Create a new subsystem in UCI named 'klipper'
+uci import klipper < /dev/null
+
+
+# Define the section, `klipper.subvol`
+uci set klipper.subvol='subvol'
+# Define values
+uci set klipper.subvol.nginx="$NGINXVOL"
+uci set klipper.subvol.python="$PYTHONVOL"
+uci set klipper.subvol.gcc="$GCCVOL"
+uci set klipper.subvol.klipper="$KLIPPERVOL"
+uci set klipper.subvol.moonraker="$MOONRAKERVOL"
+uci set klipper.subvol.printer_data="$PRINTER_DATAVOL"
+uci set klipper.subvol.log="$LOGVOL"
+
+
+# Commit changes
+uci commit klipper
+# ===========================
+# End of the following stuff
+# ===========================
+
 # shellcheck disable=SC1091
 . /lib/functions.sh
 
 # Error, log, and info functions. Colours defined once here:
 RED='\033[0;31m'	# Red
-LG='\033[0;37m'		# Light Gray
+CYAN='\033[0;36m'		# Light Gray
 NC='\033[0m' 		# No Color
 echoerr(){
 	# Just a regular echo, but renamed/colored for readability.
@@ -32,7 +68,7 @@ echoerr(){
 info(){
 	# Just a regular echo, but renamed/colored for readability
 	# Also adds a prefix. Fancy!
-	echo -e "[${LG}INFO${NC}]${LG} $*${NC}"
+	echo -e "[${CYAN}INFO${NC}]${CYAN} $*${NC}"
 }
 
 config_load klipper
@@ -107,7 +143,7 @@ prompt_block_device(){
 					*) _ANS='not_found';;
 				esac
 				if [ "$_ANS" = 'yes' ]; then
-					info "Device is '$_DEVICE'"
+					_PARTITION="${_DEVICE}1"
 					_TMP='valid'
 				elif [ "$_ANS" = 'no' ]; then
 					echo -e 'Please select another device\n\n'
@@ -198,14 +234,15 @@ make_btrfs(){
 		sleep 5
 		echo "Not interrupted, continuing..."
 		parted -s "$_DEVICE" -- mktable gpt mkpart KlipperWRT 0% 100%
-		mkfs.btrfs -f "${_DEVICE}1"
+		wipefs -a "$_PARTITION"
+		mkfs.btrfs -f "$_PARTITION"
 		# Evaluate `block info $_DEVICE` to obtain the uuid as a variable
 		# This works by evaluating any string matching `VAR=value` from stdin, and declaring it a variable
-		eval "$(block info "${_DEVICE}" | grep -o -e "UUID=\S*")"
+		eval "$(block info "$_PARTITION" | grep -o -e "UUID=\S*")"
 		# Create parent directory
 		mkdir -p "$MOUNTPOINT"
 		# Mount the device correctly
-		mount "${_DEVICE}1" "$MOUNTPOINT"
+		mount "$_PARTITION" "$MOUNTPOINT"
 
 		# Create the gcc subvolume, make the bind mount directory
 		btrfs subvolume create "$MOUNTPOINT/$GCCVOL"
@@ -265,7 +302,7 @@ make_btrfs(){
 	chmod 775 /etc/init.d/klippertab
 
 	# Unmount the $_DEVICE in case it is in use
-	umount "${_DEVICE}1"
+	umount "$_PARTITION"
 	block umount
 	block mount
 	/etc/init.d/klippertab boot
@@ -292,26 +329,10 @@ create_uci_defaults(){
 	# This function will add the default configuration to a uci section, which will be read by the service files.
 	# Service files are in `/etc/init.d/`
 
-	# Full path to the python executable. 
-	PYTHONPATH='/usr/bin/python'
-	# Full path to the python executable for each service. By default, this will be the same as $PYTHONPATH
-	# If you need to specify a different python installation for each program, do that here
-	PYTHONPATH_KLIPPER="$PYTHONPATH"
-	PYTHONPATH_MOONRAKER="$PYTHONPATH"
-	# Name of subvolume
-	PYTHONVOL='python3.10'
-	GCCVOL='gcc'
-	KLIPPERVOL='klipper'
-	NGINXVOL='nginx'
-	MOONRAKERVOL='moonraker'
-	PRINTER_DATAVOL='printer_data'
-
 	#===================#
 	#====  Klipper  ====#
 	#===================#
 
-	# Create a new subsystem in UCI named 'klipper'
-	uci import klipper < /dev/null
 
 	# Define the section, `klipper.path`
 	uci set klipper.path='path'
@@ -320,19 +341,7 @@ create_uci_defaults(){
 	uci set klipper.path.klipper_py="$MOUNTPOINT/$KLIPPERVOL/klippy/klippy.py"
 	uci set klipper.path.printer_cfg="$MOUNTPOINT/$PRINTER_DATAVOL/printer.cfg"
 	uci set klipper.path.klipper_log="$MOUNTPOINT/$LOGVOL/klipper.log"
-	
-	# Define the section, `klipper.subvol`
-	uci set klipper.subvol='subvol'
-	# Define values
-	uci set klipper.subvol.nginx="$NGINXVOL"
-	uci set klipper.subvol.python="$PYTHONVOL"
-	uci set klipper.subvol.gcc="$GCCVOL"
-	uci set klipper.subvol.klipper="$KLIPPERVOL"
-	uci set klipper.subvol.moonraker="$MOONRAKERVOL"
-	uci set klipper.subvol.printer_data="$PRINTER_DATAVOL"
-	uci set klipper.subvol.log="$LOGVOL"
 
-	
 	# Commit changes
 	uci commit klipper
 
@@ -356,7 +365,7 @@ create_uci_defaults(){
 	# Commit changes
 	uci commit moonraker
 }
-install_backends(){
+install_backend(){
 	_OPKG_TO_INSTALL='gcc python3 python3-pip python3-cffi python3-dev python3-greenlet python3-jinja2 python3-markupsafe python3-tornado python3-pillow python3-distro python3-curl python3-zeroconf python3-paho-mqtt python3-yaml python3-requests ip-full libsodium python3-pyserial'
 	_PIP3_TO_INSTALL='python-can configparser pyserial-asyncio lmdb streaming-form-data inotify-simple libnacl preprocess-cancellation apprise ldap3 dbus-next'
 	info 'Installing gcc and python via opkg'
@@ -392,7 +401,7 @@ install_frontend(){
 
 
 select_frontend
-create_uci_defaults
 make_btrfs
-install_backends
-install_frontend
+create_uci_defaults
+#install_backend
+#install_frontend
