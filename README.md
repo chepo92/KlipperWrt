@@ -17,7 +17,6 @@ KlipperWRT-EX revolves around a few core principles:
 - Safety
 More information on what this entails can be found [here](Docs/Principles.md)
 
-*Keep in mind that this is a personal project, and I won't have time to do everything - but I hope I can at least clear a bit of the confusion and help people along in the right direction.*
 
 --------------------------------------------------------------------------
 ### Credits:
