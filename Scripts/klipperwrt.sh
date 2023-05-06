@@ -14,13 +14,18 @@
 # Make sure to select the appropriate kmod for your UART controller)
 
 
-# ==============================================================================
-# The following stuff is just for testing, it should be moved around eventually
-# ==============================================================================
+#=======================#
+#=====  Variables  =====#
+#=======================#
+
+# These are variables are used in various places in the script, but not exposed to the user for customization. They can be changed manually, but things might break;
+# use caution and know what you are doing beforehand.
+
+
 # Full path to the python executable. 
 PYTHONPATH='/usr/bin/python'
 # Full path to the python executable for each service. By default, this will be the same as $PYTHONPATH
-# If you need to specify a different python installation for each program, do that here
+# If you need to specify a different python installation for each program (for compatibility reasons), do that here
 PYTHONPATH_KLIPPER="$PYTHONPATH"
 PYTHONPATH_MOONRAKER="$PYTHONPATH"
 # Name of subvolume
@@ -30,36 +35,23 @@ KLIPPERVOL='klipper'
 NGINXVOL='nginx'
 MOONRAKERVOL='moonraker'
 PRINTER_DATAVOL='printer_data'
-
-# Create a new subsystem in UCI named 'klipper'
-uci import klipper < /dev/null
-
-
-# Define the section, `klipper.subvol`
-uci set klipper.subvol='subvol'
-# Define values
-uci set klipper.subvol.nginx="$NGINXVOL"
-uci set klipper.subvol.python="$PYTHONVOL"
-uci set klipper.subvol.gcc="$GCCVOL"
-uci set klipper.subvol.klipper="$KLIPPERVOL"
-uci set klipper.subvol.moonraker="$MOONRAKERVOL"
-uci set klipper.subvol.printer_data="$PRINTER_DATAVOL"
-uci set klipper.subvol.log="$LOGVOL"
-
-
-# Commit changes
-uci commit klipper
-# ===========================
-# End of the following stuff
-# ===========================
-
-# shellcheck disable=SC1091
-. /lib/functions.sh
-
-# Error, log, and info functions. Colours defined once here:
+# Mountpoint paths
+NGINXDIR="/etc/$NGINXVOL"
+PYTHONDIR="/usr/lib/$PYTHONVOL"
+GCCDIR="/usr/lib/$GCCVOL"
+# Colours to be used for echoerr and info
 RED='\033[0;31m'	# Red
-CYAN='\033[0;36m'		# Light Gray
+CYAN='\033[0;36m'	# Cyan
 NC='\033[0m' 		# No Color
+
+# shellcheck disable=SC1091,SC3046
+source /lib/functions.sh
+config_load klipper
+
+#=========================#
+#======  Functions  ======#
+#=========================#
+# These functions are strictly repeatable code blocks
 echoerr(){
 	# Just a regular echo, but renamed/colored for readability.
 	# Also logs to stderr and adds a prefix. Fancy!
@@ -70,14 +62,6 @@ info(){
 	# Also adds a prefix. Fancy!
 	echo -e "[${CYAN}INFO${NC}]${CYAN} $*${NC}"
 }
-
-config_load klipper
-
-#=======================#
-#====== Functions ======#
-#=======================#
-# These functions are used within the different sections as repeatable code blocks
-
 bindtest(){
 	# Test whether a bind mount completed successfully
 	# Arg one is the source directory, arg two is the folder it is bind mounted to
@@ -157,33 +141,9 @@ prompt_block_device(){
 			sleep 1
 		fi
 	done
-unset -v _TMP _ANS _YN
+	unset -v _TMP _ANS _YN
 }
-select_frontend(){
-	echo 'Which frontend would you like to use?'
-	echo -e 'Options are:\n'
-	echo '====================================='
-	echo '0) Abort'
-	echo '1) Fluidd'
-	echo '2) Mainsail'
-	echo '3) Duet Web Control (Not implemented)'
-	echo '====================================='
-	_ANS='not_found'
-	while [ "$_ANS" = 'not_found' ]; do
-		read -rp 'Select your frontend: ' _ANS
-		case "$_ANS" in
-			0) _ANS='abort' ;;
-			1) _FRONTEND='fluidd' ;;
-			2) _FRONTEND='mainsail' ;;
-			3) _FRONTEND='dwc' ;;
-			*) _ANS='not_found' ;;
-		esac
-		if [ "$_ANS" = 'abort' ]; then
-			exit 1
-		fi
-	done
-	unset -v _ANS
-}
+# These two, however, are exceptions - they are only used once, but have been placed here for readability.
 install_dwc(){
 	echoerr 'Not implemented! Please choose another frontend.'
 	# PYTHONPATH_DWC="$PYTHONPATH"
@@ -214,21 +174,63 @@ install_fluidd(){
 
 
 
-#======================================#
-#===== Filesystem and Mountpoints =====#
-#======================================#
+#==========================#
+#=====  Installation  =====#
+#==========================#
 
+select_frontend(){
+	echo 'Which frontend would you like to use?'
+	echo -e 'Options are:\n'
+	echo '====================================='
+	echo '0) Abort'
+	echo '1) Fluidd'
+	echo '2) Mainsail'
+	echo '3) Duet Web Control (Not implemented)'
+	echo '====================================='
+	_ANS='not_found'
+	while [ "$_ANS" = 'not_found' ]; do
+		read -rp 'Select your frontend: ' _ANS
+		case "$_ANS" in
+			0) _ANS='abort' ;;
+			1) _FRONTEND='fluidd' ;;
+			2) _FRONTEND='mainsail' ;;
+			3) _FRONTEND='dwc' ;;
+			*) _ANS='not_found' ;;
+		esac
+		if [ "$_ANS" = 'abort' ]; then
+			exit 1
+		fi
+	done
+	unset -v _ANS
+}
 make_btrfs(){
 	prompt_block_device
 	info "Installation target is '$_DEVICE'"
+
+
+	# Create a new subsystem in UCI named 'klipper'
+	uci import klipper < /dev/null
+
+	# Define the section, `klipper.subvol`
+	uci set klipper.subvol='subvol'
+	# Define values
+	uci set klipper.subvol.nginx="$NGINXVOL"
+	uci set klipper.subvol.python="$PYTHONVOL"
+	uci set klipper.subvol.gcc="$GCCVOL"
+	uci set klipper.subvol.klipper="$KLIPPERVOL"
+	uci set klipper.subvol.moonraker="$MOONRAKERVOL"
+	uci set klipper.subvol.printer_data="$PRINTER_DATAVOL"
+	uci set klipper.subvol.log="$LOGVOL"
+
+	# Commit changes
+	uci commit klipper
+
 	MOUNTPOINT='/etc/klipper'
 	info "Root mountpoint is '$MOUNTPOINT'"
-	# Mountpoint paths
-	NGINXDIR="/etc/$NGINXVOL"
-	PYTHONDIR="/usr/lib/$PYTHONVOL"
-	GCCDIR="/usr/lib/$GCCVOL"
-	FORMAT='true'
 
+	
+	# The following if statement is merely future proofing. In the future, I may add the option to migrate an existing installation.
+	FORMAT='true'
 	if [ "$FORMAT" = 'true' ]; then
 		echo "Formatting device '$_DEVICE'. Last chance to abort. (ctrl +c)"
 		sleep 5
@@ -324,14 +326,13 @@ make_btrfs(){
 		info 'Tests passed, proceeding to next step'
 	fi
 }
-
 create_uci_defaults(){
 	# This function will add the default configuration to a uci section, which will be read by the service files.
-	# Service files are in `/etc/init.d/`
+	# Service files are in /etc/init.d/
 
-	#===================#
-	#====  Klipper  ====#
-	#===================#
+	#=====================#
+	#=====  Klipper  =====#
+	#=====================#
 
 
 	# Define the section, `klipper.path`
@@ -345,11 +346,9 @@ create_uci_defaults(){
 	# Commit changes
 	uci commit klipper
 
-	
-
-	#################
-	##  Moonraker  ##
-	#################
+	#=======================#
+	#=====  Moonraker  =====#
+	#=======================#
 
 	# Create a new subsystem in UCI named 'moonraker'
 	uci import moonraker < /dev/null
