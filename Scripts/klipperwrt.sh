@@ -328,7 +328,7 @@ make_btrfs(){
 }
 create_uci_defaults(){
 	# This function will add the default configuration to a uci section, which will be read by the service files.
-	# Service files are in /etc/init.d/
+	# Service files are in `/etc/init.d/``
 
 	#=====================#
 	#=====  Klipper  =====#
