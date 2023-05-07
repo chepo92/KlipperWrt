@@ -38,7 +38,7 @@ bind_mount(){
 		config_get _OPTIONS "$1" options
 		config_get _PROGRAM "$1" program
 		config_get _SUBVOL subvol "$_PROGRAM"
-		mount -t btrfs -o "$(echo "$_OPTIONS" | sed -En "s/SUBVOL_UCI_REPLACE/$_SUBVOL/p")" "$DEVICE" "$_TARGET"/"$_SUBVOL"
+		mount -t btrfs -o "$(echo "$_OPTIONS" | sed -En "s/SUBVOL_UCI_REPLACE/$_SUBVOL/p")" "$DEVICE" "$_TARGET"
 	else
 		echo -e "[INFO] Section '$1' not enabled"
 	fi
